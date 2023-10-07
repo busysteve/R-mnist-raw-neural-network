@@ -143,10 +143,10 @@ mask <- function(m,c){
 
 # Initialize weights and biases
 input_size <- 784  # Replace with the actual input size
-hidden_size <- c(16,16,16)
+hidden_size <- c(200,80)
 output_size <- 10  # Replace with the actual output size
 
-hidden_act <- c("sigmoid", "tanh", "tanh" )
+hidden_act <- c("tanh", "tanh" )
 out_act <- "tanh"
 
 
@@ -180,8 +180,8 @@ set.seed(proc.time()[3])  # For reproducibility
 
 for( l in 1:(length(layer_size)-1) )
 {
-  w_layer[[l]] <- matrix(runif(layer_size[l] * layer_size[l+1]), nrow = layer_size[l], ncol = layer_size[l+1]) 
-  b_layer[[l]] <- matrix(runif(layer_size[l+1]), nrow = 1, ncol = layer_size[l+1]) 
+  w_layer[[l]] <- matrix(runif(layer_size[l] * layer_size[l+1], min=-1, max=1), nrow = layer_size[l], ncol = layer_size[l+1]) 
+  b_layer[[l]] <- matrix(runif(layer_size[l+1], min=-1, max=1), nrow = 1, ncol = layer_size[l+1]) 
 }
 
 
@@ -246,35 +246,14 @@ for (epoch in 1:epochs) {
     #length( samples[ batch[1]:batch[2] ] )
     
     # Forward propagation
-    #next_in[[1]] = (X)
-
-    #for( l in 1:(length(layer_size)-1) )
-    
-    dim(X %*% w_layer[[1]])
-    dim(matrix(rep(b_layer[[1]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE))
-    dim(b_layer[[1]])
     next_in[[1]] <- X %*% w_layer[[1]] + matrix(rep(b_layer[[1]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
     next_out[[1]] <- do.call( acts[[1]], list(next_in[[1]]) ) 
-    #for( l in 2:(length(layer_size) -1 ) )
     for( l in 2:(length(layer_size) -1 ) )
     {
-      #next_in[[l]] <- next_in[[l-1]] %*% w_layer[[l]] + matrix(rep(b_layer[[l]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
-      #next_out[[l]] <- do.call( acts[[l]], list(next_in[[l]]) ) 
-      
       next_in[[l]] <- next_out[[l-1]] %*% w_layer[[l]] + matrix(rep(b_layer[[l]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
       next_out[[l]] <- do.call( acts[[l]], list(next_in[[l]]) ) 
-      
-      # hidden3_input <- hidden2_output %*% w_hidden3 + matrix(rep(b_hidden3, num_batch_samples), nrow = num_batch_samples, byrow = TRUE)
-      # hidden3_output <- act3(hidden3_input)
-      
     }
   
-    length( w_layer)
-    
-    dim(next_in[[l]])
-    dim(w_layer[[l]])
-    dim(matrix(rep(b_layer[[l]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE))
-    dim(b_layer[[l]])
     # Compute the loss
     #loss <- ((sum((y - output_output)^2))) / (2*dim(output_output)[1])
     loss <- (sum(abs((y - next_out[[l]])^2))) / (2*dim(next_out[[l]])[1])
@@ -375,13 +354,19 @@ for (epoch in 1:epochs) {
 }
 
 
+# save weights and biases to files for testing
+for( l in 1:( length(layer_size)-1 ) )
+{
+  write.table( w_layer[[l]], file=paste("./layer-weights-", l, sep="") )
+  write.table( b_layer[[l]], file=paste("./bias-weights-", l, sep="") )
+}
+
 
 #############################################
 #
 #      to train, run script from here up
 #
 #############################################
-
 
 
 # take a softmax output and determine the answer
@@ -394,6 +379,15 @@ choice <- function(x) {
   }
 }
 
+# load weights and biases from files for testing
+weights=list()
+biases=list()
+layer_cnt = 4
+for( l in 1:( layer_cnt-1 ) )
+{
+  weights[[l]]<-as.matrix(read.table(file=paste("./layer-weights-", l, sep=""),header=T))
+  biases[[l]]<-as.matrix(read.table(file=paste("./bias-weights-", l, sep=""),header=T))
+}
 
 
 correct <- 0
@@ -407,22 +401,17 @@ for( it in 1:10000 )
   
   # Forward propagation
   num_samples <- 1
+
+  # Forward propagation
+  next_in[[1]] <- X %*% weights[[1]] + matrix(rep(biases[[1]], num_samples), nrow = num_samples, byrow = TRUE) 
+  next_out[[1]] <- do.call( acts[[1]], list(next_in[[1]]) ) 
+  for( l in 2:(layer_cnt-1) )
+  {
+    next_in[[l]] <- next_out[[l-1]] %*% weights[[l]] + matrix(rep(biases[[l]], num_samples), nrow = num_samples, byrow = TRUE) 
+    next_out[[l]] <- do.call( acts[[l]], list(next_in[[l]]) ) 
+  }
   
-  hidden1_input <- X %*% w_hidden1 + matrix(rep(b_hidden1, num_samples), nrow = num_samples, byrow = TRUE)
-  hidden1_output <- act1(hidden1_input)
-  
-  hidden2_input <- hidden1_output %*% w_hidden2 + matrix(rep(b_hidden2, num_samples), nrow = num_samples, byrow = TRUE)
-  hidden2_output <- act2(hidden2_input)
-  
-  hidden3_input <- hidden2_output %*% w_hidden3 + matrix(rep(b_hidden3, num_samples), nrow = num_samples, byrow = TRUE)
-  hidden3_output <- act3(hidden3_input)
-  
-  output_input <- hidden3_output %*% w_output + matrix(rep(b_output, num_samples), nrow = num_samples, byrow = TRUE)
-  output_output <- act4(output_input)
-  
-  #output_output
-  #softmax( output_output )
-  r <- choice( softmax( output_output ) )
+  r <- choice( softmax( next_out[[l]] ) )
   if( r == y )
   {
     correct = correct + 1
@@ -432,6 +421,11 @@ correct
 
 
 
+
+
+
+# test single sample from testing set
+
 # I <- dataset
 # R <- labels
 I <- dataset.test
@@ -439,24 +433,23 @@ R <- labels.test
 
 
 
-item = 13325
-X = I[item,]
-labels[item]
-matrix( unlist(lapply( dataset[item,], function(x) { if(x < .3) {' '} else{'#'}  } )) , ncol=28, byrow=TRUE)  
+item = 3315
+X = It[item,]
+R[item]
+matrix( unlist(lapply( X, function(x) { if(x < .3) {' '} else{'#'}  } )) , ncol=28, byrow=TRUE)  
 
 # Forward propagation
 num_samples <- 1
 
-hidden1_input <- X %*% w_hidden1 + matrix(rep(b_hidden1, num_samples), nrow = num_samples, byrow = TRUE)
-hidden1_output <- act1(hidden1_input)
+next_in[[1]] <- X %*% w_layer[[1]] + matrix(rep(b_layer[[1]], num_samples), nrow = num_samples, byrow = TRUE) 
+next_out[[1]] <- do.call( acts[[1]], list(next_in[[1]]) ) 
+for( l in 2:(length(layer_size) -1 ) )
+{
+  next_in[[l]] <- next_out[[l-1]] %*% w_layer[[l]] + matrix(rep(b_layer[[l]], num_samples), nrow = num_samples, byrow = TRUE) 
+  next_out[[l]] <- do.call( acts[[l]], list(next_in[[l]]) ) 
+}
 
-hidden2_input <- hidden1_output %*% w_hidden2 + matrix(rep(b_hidden2, num_samples), nrow = num_samples, byrow = TRUE)
-hidden2_output <- act2(hidden2_input)
-
-output_input <- hidden2_output %*% w_output + matrix(rep(b_output, num_samples), nrow = num_samples, byrow = TRUE)
-output_output <- act3(output_input)
-
-output_output
+output_output <- next_out[[l]]
 softmax( output_output )
 choice( softmax( output_output ) )
 
