@@ -143,10 +143,10 @@ mask <- function(m,c){
 
 # Initialize weights and biases
 input_size <- 784  # Replace with the actual input size
-hidden_size <- c(24,16)
+hidden_size <- c(16,16,16)
 output_size <- 10  # Replace with the actual output size
 
-hidden_act <- c("tanh","relu")
+hidden_act <- c("sigmoid", "tanh", "tanh" )
 out_act <- "tanh"
 
 
@@ -188,7 +188,7 @@ for( l in 1:(length(layer_size)-1) )
 
 
 # Define the learning rate
-learning_rate <- 0.01
+learning_rate <- 0.001
 min_learning_rate <- 0.000001
 # dead_weight_perc <- 0.1
 
@@ -258,8 +258,15 @@ for (epoch in 1:epochs) {
     #for( l in 2:(length(layer_size) -1 ) )
     for( l in 2:(length(layer_size) -1 ) )
     {
-      next_in[[l]] <- next_in[[l-1]] %*% w_layer[[l]] + matrix(rep(b_layer[[l]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
+      #next_in[[l]] <- next_in[[l-1]] %*% w_layer[[l]] + matrix(rep(b_layer[[l]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
+      #next_out[[l]] <- do.call( acts[[l]], list(next_in[[l]]) ) 
+      
+      next_in[[l]] <- next_out[[l-1]] %*% w_layer[[l]] + matrix(rep(b_layer[[l]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
       next_out[[l]] <- do.call( acts[[l]], list(next_in[[l]]) ) 
+      
+      # hidden3_input <- hidden2_output %*% w_hidden3 + matrix(rep(b_hidden3, num_batch_samples), nrow = num_batch_samples, byrow = TRUE)
+      # hidden3_output <- act3(hidden3_input)
+      
     }
   
     length( w_layer)
