@@ -101,6 +101,15 @@ relu_derivative <- function(x) {
   ifelse(x > 0, 1, 0)
 }
 
+# ReLU (Rectified Linear Unit) activation function and its derivative
+linear <- function(x) {
+  x
+}
+
+linear_derivative <- function(x) {
+  1
+}
+
 # softmax for multi-output networks
 softmax <- function(x) {
   e_x <- exp(x - max(x))
@@ -137,8 +146,8 @@ input_size <- 784  # Replace with the actual input size
 hidden_size <- c(24,16)
 output_size <- 10  # Replace with the actual output size
 
-hidden_act <- c("tanh","tanh")
-out_act <- "sigmoid"
+hidden_act <- c("tanh","relu")
+out_act <- "tanh"
 
 
 # set activation functions for our layers
@@ -146,19 +155,19 @@ acts <- list()
 for( a in 1:length(hidden_act) )
 {
   acts[[a]] <- ( switch( hidden_act[a],
-                              "tanh" = tanh, "sigmoid" = sigmoid, "relu" = relu, "lru" = lrlu ) )
+                              "tanh" = tanh, "sigmoid" = sigmoid, "relu" = relu, "lru" = lrlu, "linear" = linear ) )
 }
 acts[[a+1]] <- ( switch( out_act,
-                            "tanh" = tanh, "sigmoid" = sigmoid, "relu" = relu, "lrlu" = lrlu ) )
+                            "tanh" = tanh, "sigmoid" = sigmoid, "relu" = relu, "lrlu" = lrlu, "linear" = linear  ) )
 
 derivs <- list()
 for( a in 1:length(hidden_act) )
 {
   derivs[[a]] <- ( switch( hidden_act[a],
-                              "tanh" = tanh_derivative, "sigmoid" = sigmoid_derivative, "relu" = relu_derivative, "lru" = lrlu_derivative ) )
+                              "tanh" = tanh_derivative, "sigmoid" = sigmoid_derivative, "relu" = relu_derivative, "lru" = lrlu_derivative, "linear" = linear_derivative  ) )
 }
 derivs[[a+1]] <- ( switch( out_act,
-                              "tanh" = tanh_derivative, "sigmoid" = sigmoid_derivative, "relu" = relu_derivative, "lru" = lrlu_derivative ) )
+                              "tanh" = tanh_derivative, "sigmoid" = sigmoid_derivative, "relu" = relu_derivative, "lru" = lrlu_derivative, "linear" = linear_derivative ) )
 
 
 
@@ -246,12 +255,15 @@ for (epoch in 1:epochs) {
     dim(b_layer[[1]])
     next_in[[1]] <- X %*% w_layer[[1]] + matrix(rep(b_layer[[1]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
     next_out[[1]] <- do.call( acts[[1]], list(next_in[[1]]) ) 
-    for( l in 2:(length(layer_size)-1) )
+    #for( l in 2:(length(layer_size) -1 ) )
+    for( l in 2:(length(layer_size) -1 ) )
     {
       next_in[[l]] <- next_in[[l-1]] %*% w_layer[[l]] + matrix(rep(b_layer[[l]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
       next_out[[l]] <- do.call( acts[[l]], list(next_in[[l]]) ) 
     }
   
+    length( w_layer)
+    
     dim(next_in[[l]])
     dim(w_layer[[l]])
     dim(matrix(rep(b_layer[[l]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE))
