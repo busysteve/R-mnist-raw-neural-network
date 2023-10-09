@@ -22,17 +22,6 @@ bnn_outs <- function(x, cnt) {
   v
 }
 
-# convert training labels from single digit number to ten digits of 0's and a 1
-R <- lapply( labels, out10 )
-R <- unlist(R)
-R <- matrix( R, ncol=10, byrow = TRUE)
-
-# convert testing labels from single digit number to ten digits of 0's and a 1
-Rt <- lapply( labels, out10 )
-Rt <- unlist(R)
-Rt <- matrix( R, ncol=10, byrow = TRUE)
-
-
 # Define the sigmoid activation function and its derivative
 bnn_sigmoid <- function(x) {
   return(1 / (1 + exp(-(ifelse( x > .000001, .000001, x )))))
@@ -120,19 +109,19 @@ bnn_set_activations <- function(n)
   for( a in 1:length(n$hidden_act) )
   {
     n$acts[[a]] <- ( switch( n$hidden_act[a],
-                                "tanh" = tanh, "sigmoid" = sigmoid, "relu" = relu, "lru" = lrlu, "linear" = linear ) )
+                                "tanh" = bnn_tanh, "sigmoid" = bnn_sigmoid, "relu" = bnn_relu, "lru" = bnn_lrlu, "linear" = bnn_linear ) )
   }
   n$acts[[a+1]] <- ( switch( n$output_act,
-                              "tanh" = tanh, "sigmoid" = sigmoid, "relu" = relu, "lru" = lrlu, "linear" = linear  ) )
+                              "tanh" = bnn_tanh, "sigmoid" = bnn_sigmoid, "relu" = bnn_relu, "lru" = bnn_lrlu, "linear" = bnn_linear  ) )
   
   n$derivs <- list()
   for( a in 1:length(n$hidden_act) )
   {
     n$derivs[[a]] <- ( switch( n$hidden_act[a],
-                                "tanh" = tanh_derivative, "sigmoid" = sigmoid_derivative, "relu" = relu_derivative, "lru" = lrlu_derivative, "linear" = linear_derivative  ) )
+                                "tanh" = bnn_tanh_derivative, "sigmoid" = bnn_sigmoid_derivative, "relu" = bnn_relu_derivative, "lru" = bnn_lrlu_derivative, "linear" = bnn_linear_derivative  ) )
   }
   n$derivs[[a+1]] <- ( switch( n$output_act,
-                                "tanh" = tanh_derivative, "sigmoid" = sigmoid_derivative, "relu" = relu_derivative, "lru" = lrlu_derivative, "linear" = linear_derivative ) )
+                                "tanh" = bnn_tanh_derivative, "sigmoid" = bnn_sigmoid_derivative, "relu" = bnn_relu_derivative, "lru" = bnn_lrlu_derivative, "linear" = bnn_linear_derivative ) )
 
   n
 }
@@ -161,10 +150,10 @@ bnn_create <- function( name="mnist", inputs=784, hiddens=c(200, 100), outputs=1
 {
   nn <- list()
   nn$name <- name
-  nn$input_size <- input_size
+  nn$input_size <- inputs
   nn$hidden_size <- hiddens
   nn$hidden_acts <- hidden_acts
-  nn$output_size <- output_size
+  nn$output_size <- outputs
   nn$output_act <- output_act
   nn <- bnn_set_activations(nn)
   nn <- bnn_set_weights(nn)
@@ -184,7 +173,7 @@ bnn_predict <- function( nn, input )
   next_out <- list()
   next_in[[1]] <- input %*% nn$w_layer[[1]] + matrix(rep(nn$b_layer[[1]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
   next_out[[1]] <- do.call( nn$acts[[1]], list(next_in[[1]]) ) 
-  for( l in 2:(length(layer_size) -1 ) )
+  for( l in 2:(length(nn$layer_size) -1 ) )
   {
     next_in[[l]] <- next_out[[l-1]] %*% nn$w_layer[[l]] + matrix(rep(nn$b_layer[[l]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
     next_out[[l]] <- do.call( nn$acts[[l]], list(next_in[[l]]) ) 
@@ -214,8 +203,8 @@ bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, mi
   min_loss = 3
   neg_rate_diff_tot = 0
   
-  nn$next_in = list()
-  nn$next_out = list()
+  next_in = list()
+  next_out = list()
   
   for (epoch in 1:epochs) {
   
@@ -228,17 +217,27 @@ bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, mi
       
       
       batch = batches[i,]
-      X <- dataset[ samples[ batch[1]:batch[2] ],]
-      y <- labelset[ samples[ batch[1]:batch[2] ],]
+      XX <- dataset[ samples[ batch[1]:batch[2] ],]
+      yy <- labelset[ samples[ batch[1]:batch[2] ],]
       
       num_batch_samples = batch[2] - batch[1] + 1
-       
+      
+      if( i >= 2 )
+      {
+        h=10
+      }
+      
+      if( is.na( nn$w_layer[[1]][1,1] ) )
+      {
+        h = 3
+      }
+      
       #length( samples[ batch[1]:batch[2] ] )
       
       # Forward propagation
-      next_in[[1]] <- X %*% nn$w_layer[[1]] + matrix(rep(nn$b_layer[[1]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
+      next_in[[1]] <- XX %*% nn$w_layer[[1]] + matrix(rep(nn$b_layer[[1]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
       next_out[[1]] <- do.call( nn$acts[[1]], list(next_in[[1]]) ) 
-      for( l in 2:(length(layer_size) -1 ) )
+      for( l in 2:(length(nn$layer_size) -1 ) )
       {
         next_in[[l]] <- next_out[[l-1]] %*% nn$w_layer[[l]] + matrix(rep(nn$b_layer[[l]], num_batch_samples), nrow = num_batch_samples, byrow = TRUE) 
         next_out[[l]] <- do.call( nn$acts[[l]], list(next_in[[l]]) ) 
@@ -246,17 +245,23 @@ bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, mi
   
       # Compute the loss
       #loss <- ((sum((y - output_output)^2))) / (2*dim(output_output)[1])
-      loss <- (sum(abs((y - next_out[[l]])^2))) / (2*dim(next_out[[l]])[1])
+      loss <- (sum(abs((yy - next_out[[l]])^2))) / (2*dim(next_out[[l]])[1])
       losses <- append(losses, loss)
       #loss <- cross_entropy( y, output_output ) / dim(output_output)[1]
+      
+      if( is.na(loss) )
+      {
+        h = 11
+      }
+      
       
       # Backpropagation
   
       l <- length(next_out)
       l_error <- list()
       l_delta <- list()
-      l_error[[l]] <- -(y - next_out[[l]])
-      l_delta[[l]] <- l_error[[l]] * do.call(  derivs[[l]], list(next_out[[l]]) )
+      l_error[[l]] <- -(yy - next_out[[l]])
+      l_delta[[l]] <- l_error[[l]] * do.call(  nn$derivs[[l]], list(next_out[[l]]) )
       for( l in (l-1):1 )
       {
         l_error[[l]] <- l_delta[[l+1]] %*% t(nn$w_layer[[l+1]])
@@ -271,7 +276,7 @@ bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, mi
         nn$b_layer[[l]] <- nn$b_layer[[l]] - colSums(l_delta[[l]]) * learning_rate
       }
       
-      nn$w_layer[[1]] <- nn$w_layer[[1]] - t(X) %*% l_delta[[1]] * learning_rate #* mask(w_output, dead_weight_perc)
+      nn$w_layer[[1]] <- nn$w_layer[[1]] - t(XX) %*% l_delta[[1]] * learning_rate #* mask(w_output, dead_weight_perc)
       nn$b_layer[[1]] <- nn$b_layer[[1]] - colSums(l_delta[[1]]) * learning_rate
       
     }
