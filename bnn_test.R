@@ -35,6 +35,9 @@ labels.test = matrix( data=mnist.labels.test, nrow=10000, ncol=1, byrow=TRUE )
 
 dim(labels.test)
 
+
+
+
 # assign training data to I
 I <- dataset
 
@@ -42,9 +45,24 @@ I <- dataset
 It <- dataset.test
 
 
+# convert training labels from single digit number to ten digits of 0's and a 1
+R <- lapply( labels, out10 )
+R <- unlist(R)
+R <- matrix( R, ncol=10, byrow = TRUE)
+
+# convert testing labels from single digit number to ten digits of 0's and a 1
+Rt <- lapply( labels, out10 )
+Rt <- unlist(R)
+Rt <- matrix( R, ncol=10, byrow = TRUE)
+
+
 
 X <- I
 y <- R
+
+
+
+
 
 
 nn <- bnn_create( name="mnist", inputs=784, hiddens=c(200, 100), outputs=10, hidden_acts=c("relu", "tanh"), output_act="tanh")
@@ -89,9 +107,9 @@ for( it in 1:10000 )
   num_samples <- 1
   
   # Forward propagation
-  result <- bnn_predict( nn, input )
+  result <- bnn_predict( nn, X )
   
-  r <- choice( softmax( result ) )
+  r <- bnn_choice( bnn_softmax( result ) )
   if( r == y )
   {
     correct = correct + 1
