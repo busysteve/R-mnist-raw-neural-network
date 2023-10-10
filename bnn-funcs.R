@@ -92,7 +92,7 @@ bnn_cross_entropy <- function(y_true, y_pred) {
 
 # weight matrix masking function
 bnn_dropout <- function(m,c,b=TRUE){
-  if( b == FALSE )
+  if( b == FALSE || c <= 0.0 )
   {
     return(m)
   }
