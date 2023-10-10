@@ -91,7 +91,11 @@ bnn_cross_entropy <- function(y_true, y_pred) {
 }
 
 # weight matrix masking function
-bnn_dropout <- function(m,c){
+bnn_dropout <- function(m,c,b=TRUE){
+  if( b == FALSE )
+  {
+    return(m)
+  }
   d=dim(m)
   w=d[1]*d[2]
   x=as.integer(w*c)
@@ -184,7 +188,7 @@ bnn_predict <- function( nn, input )
 
 
 
-bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, min_rate=.000001, batch_size=128)
+bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, min_rate=.000001, batch_size=128, dropout=0, dropout_mod=0 )
 {
   num_samples <- dim(dataset)[1]
   
@@ -272,11 +276,11 @@ bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, mi
       l <- length(nn$w_layer)
       for( l in l:2 )
       {
-        nn$w_layer[[l]] <- nn$w_layer[[l]] - t(next_out[[l-1]]) %*% l_delta[[l]] * learning_rate #* mask(w_output, dead_weight_perc)
+        nn$w_layer[[l]] <- nn$w_layer[[l]] - t(next_out[[l-1]]) %*% bnn_dropout( l_delta[[l]], dropout, i %% dropout_mod == 0) * learning_rate # %*% bnn_dropout(w_layer[[l]], dropout )
         nn$b_layer[[l]] <- nn$b_layer[[l]] - colSums(l_delta[[l]]) * learning_rate
       }
       
-      nn$w_layer[[1]] <- nn$w_layer[[1]] - t(XX) %*% l_delta[[1]] * learning_rate #* mask(w_output, dead_weight_perc)
+      nn$w_layer[[1]] <- nn$w_layer[[1]] - t(XX) %*% bnn_dropout( l_delta[[1]], dropout, i %% dropout_mod == 0 ) * learning_rate # %*% bnn_dropout(w_layer[[1]], dropout )
       nn$b_layer[[1]] <- nn$b_layer[[1]] - colSums(l_delta[[1]]) * learning_rate
       
     }
@@ -333,14 +337,6 @@ bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, mi
   
   nn
 }
-
-#############################################
-#
-#      to train, run script from here up
-#
-#############################################
-
-
 
 # take a softmax output and determine the answer
 bnn_choice <- function(x) {
