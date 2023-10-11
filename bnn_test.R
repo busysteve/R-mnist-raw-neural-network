@@ -63,7 +63,7 @@ y <- R
 
 
 nn <- bnn_create( name="mnist", inputs=784, hiddens=c(200, 100), outputs=10, hidden_acts=c("relu", "tanh"), output_act="tanh")
-nn <- bnn_trainer( nn, dataset=X, labels=y, epochs=6, start_rate=.007, min_rate=.000001, batch_size=128, dropout=.20, dropout_mod=10)
+nn <- bnn_trainer( nn, dataset=X, labels=y, epochs=1000, start_rate=.007, min_rate=.000001, batch_size=128, dropout=.20, dropout_mod=10)
 
 bnn_store( nn, filename="my_nn.nn" )
 
