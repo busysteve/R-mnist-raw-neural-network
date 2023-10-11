@@ -1,9 +1,6 @@
 
 
 
-
-
-
 setwd("~/rdev/")
 
 mnist.train.data = file("./mnist/train-images.idx3-ubyte", "rb")
@@ -66,12 +63,15 @@ y <- R
 
 
 nn <- bnn_create( name="mnist", inputs=784, hiddens=c(200, 100), outputs=10, hidden_acts=c("relu", "tanh"), output_act="tanh")
-nn <- bnn_trainer( nn, dataset=X, labels=y, epochs=1000, start_rate=.007, min_rate=.000001, batch_size=128, dropout=.20, dropout_mod=10)
+nn <- bnn_trainer( nn, dataset=X, labels=y, epochs=6, start_rate=.007, min_rate=.000001, batch_size=128, dropout=.20, dropout_mod=10)
 
+bnn_store( nn, filename="my_nn.nn" )
+
+nn2 <- bnn_load( filename="my_nn.nn" )
 
 
 input <- X[345,]
-result <- bnn_predict( nn, input )
+result <- bnn_predict( nn2, input )
 
 matrix( unlist(lapply( input, function(x) { if(x < .3) {' '} else{'#'}  } )) , ncol=28, byrow=TRUE)
 
