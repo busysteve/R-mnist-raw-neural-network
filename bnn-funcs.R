@@ -110,7 +110,7 @@ bnn_set_activations <- function(n)
 {
   
   n$acts <- list()
-  for( a in 1:length(n$hidden_act) )
+  for( a in 1:length(n$hidden_acts) )
   {
     n$acts[[a]] <- ( switch( n$hidden_act[a],
                                 "tanh" = bnn_tanh, "sigmoid" = bnn_sigmoid, "relu" = bnn_relu, "lru" = bnn_lrlu, "linear" = bnn_linear ) )
@@ -119,7 +119,7 @@ bnn_set_activations <- function(n)
                               "tanh" = bnn_tanh, "sigmoid" = bnn_sigmoid, "relu" = bnn_relu, "lru" = bnn_lrlu, "linear" = bnn_linear  ) )
   
   n$derivs <- list()
-  for( a in 1:length(n$hidden_act) )
+  for( a in 1:length(n$hidden_acts) )
   {
     n$derivs[[a]] <- ( switch( n$hidden_act[a],
                                 "tanh" = bnn_tanh_derivative, "sigmoid" = bnn_sigmoid_derivative, "relu" = bnn_relu_derivative, "lru" = bnn_lrlu_derivative, "linear" = bnn_linear_derivative  ) )
@@ -161,7 +161,89 @@ bnn_create <- function( name="mnist", inputs=784, hiddens=c(200, 100), outputs=1
   nn$output_act <- output_act
   nn <- bnn_set_activations(nn)
   nn <- bnn_set_weights(nn)
+  
+  nn  
+}
 
+
+
+bnn_store <- function( nn, filename=NULL )
+{
+  
+  f <- file( filename, "w" )
+  
+  writeLines( nn$name, con=f )
+  writeLines( as.character.numeric_version( nn$input_size ), con=f )
+  writeLines( as.character.numeric_version( length( nn$hidden_size ) ), con=f)
+  
+  
+  #writeLines( as.character.numeric_version( length(nn$hidden_size)), con=f )
+
+  for( h in 1:length(nn$hidden_size) )
+  {
+    writeLines( as.character.numeric_version( nn$hidden_size[[h]] ), con=f )
+    writeLines( nn$hidden_acts[[h]], con=f )
+  }
+  
+  writeLines( as.character.numeric_version( nn$output_size ), con=f )
+  writeLines( nn$output_act, con=f )
+  
+  writeLines( as.character.numeric_version( length( nn$w_layer ) ), con=f )
+  
+  for( i in 1:length( nn$w_layer ) )
+  {
+    write.table( nn$w_layer[[i]], file=f, row.names = FALSE, col.names = FALSE )
+  }
+  
+  for( i in 1:length( nn$b_layer ) )
+  {
+    write.table( nn$b_layer[[i]], file=f, row.names = FALSE, col.names = FALSE )
+  }
+  flush(f)
+  close(f)
+}
+
+
+bnn_load <- function( nn, filename=NULL )
+{
+  nn <- list()
+
+  f <- file( filename, "r" )
+  
+  nn$name <- readLines( con=f, n=1 )
+  nn$input_size <- as.integer( readLines( con=f, n=1 ) )
+  
+  hlen <- as.integer( readLines( con=f, n=1 ) )
+  nn$hidden_size <- c()
+  nn$hidden_acts <- c()
+  for( h in 1:hlen )
+  {
+    nn$hidden_size <- append( nn$hidden_size, c( as.integer( readLines( con=f, n=1 ) ) ) )
+    nn$hidden_acts <- append( nn$hidden_acts, c( ( readLines( con=f, n=1 ) ) ) )
+  }
+  
+  
+  nn$output_size <- as.integer( readLines( con=f, n=1 ) )
+  nn$output_act <- readLines( con=f, n=1 )
+
+  nn$layer_size <- append( nn$input_size, nn$hidden_size )
+  nn$layer_size <- append( nn$layer_size, nn$output_size )
+  
+  wlen <- as.integer( readLines( con=f, n=1 ) )
+  nn$w_layer <- list()
+  nn$b_layer <- list()
+  for( h in 1:wlen )
+  {
+    nn$w_layer[[h]] <- as.matrix( read.table( f, nrows = nn$layer_size[h]  ) )
+  }
+  
+  for( h in 1:wlen )
+  {
+    nn$b_layer[[h]] <- as.matrix( read.table( f, nrows = 1  ) )
+  }
+  
+  close(f)
+  nn <- bnn_set_activations( nn )
   nn  
 }
 
@@ -337,6 +419,14 @@ bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, mi
   
   nn
 }
+
+#############################################
+#
+#      to train, run script from here up
+#
+#############################################
+
+
 
 # take a softmax output and determine the answer
 bnn_choice <- function(x) {
