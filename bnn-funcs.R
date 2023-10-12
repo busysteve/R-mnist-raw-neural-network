@@ -270,7 +270,7 @@ bnn_predict <- function( nn, input )
 
 
 
-bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, min_rate=.000001, batch_size=128, dropout=0, dropout_mod=0 )
+bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, min_rate=.000001, batch_size=128, dropout=0, dropout_mod=0, filename=NULL )
 {
   num_samples <- dim(dataset)[1]
   
@@ -380,8 +380,15 @@ bnn_trainer <- function( nn, dataset, labelset, epochs=1000, start_rate=.005, mi
         next
       
       if( rate_diff > 0 )
+      {
         neg_rate_diff_tot = 0
-  
+        
+        if( is.null( filename ) == FALSE && loss < min_loss )
+        {
+          bnn_store( nn, filename )
+        }
+      }
+      
       if( neg_rate_diff_tot > 1 )
       {
         learning_rate <- learning_rate * .2
